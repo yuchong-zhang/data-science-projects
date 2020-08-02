@@ -1,0 +1,637 @@
+---
+title: "US Government Energy Consumption"
+author: "Arthi Appathurai Pratik Seta Yuchong Zhang"
+output: pdf_document
+fontsize: 10pt
+geometry: margin=1in
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(stringr)
+library(forcats)
+library(ggplot2)
+library(gtable)
+library(grid)
+library(tibble)
+library(reshape2)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Introduction
+Energy consumption is a critical parameter for many organizations and understanding its impact is of paramount importance for large organizations as it is a major contributing factor of cost to the company. The dataset chosen for this project has year-on-year historical energy consumption data for different United States federal offices starting from 1975. The data was obtained from the National Data Archives and serves as a reliable source of information and ensures the integrity of the data being considered. Energy consumption of 53 different federal offices in a standardized unit of Billion Site BTU (BBTU) and native energy units is available in the raw data considered. Cost of energy is also reported as both dollar value in the year of use and in current dollar value (as of 2016).
+
+The data is organized by the different departments and within each department by use, i.e. for facility or for mobility. Within each of these two subgroups the energry usage (in native energy units and a standardized unit) and cost (in dollars in the year of use and current dollar value) from different sources (Coal, Fuel Gas, Natural Gas, etc) is reported. For this study we consider the standardized energy consumption and cost of energy in current dollar value. In total, there are 38 observations (1975-2012) of 36 variables for each of the 53 departments.
+
+# Objectives
+The overall objective of this project is to study the trends in energy consumption by the US federal departments. The questions we expect to answer are:
+
+* __Macro Trend Analysis__  
+    + _How does the energy usage trend historically?_ We suspect that energy usage has increased over the years with improved technology and availability of energy. It would be interesting to see if there is a gradual increase of energy use or if there was a steep increase in a short period of time and, if yes, why. We hope to see how accurate of an indicator of historical events energy consumption by federal departments can be.
+    + _How does the cost of energy trend historically?_ We suspect that this trend will be closely related to the boom and bust cycles of oil and other fossil fuels.
+        
+* __Energy Source Analysis__
+    + _How has the source of energy changed over the years?_ For instance, do federal offices get the same fraction of energy from fossil fuels now as they did in 1975?
+        
+* __Departmental Trend Analysis__
+    + _How has the contribution from different departments changed over the years?_ Specifically which departments are the top contributors, have they contributed consistently over the years, etc.
+
+
+
+```{r, echo=FALSE}
+tidydf<-function(df,dep){
+  for (i in 2:9) {
+    df[1,i]<-str_c("FU",df[1,i],sep=".")
+  }
+  for (i in 10:17) {
+    df[1,i]<-str_c("MU",df[1,i],sep=".")
+  }
+  df[1,18]<-str_c("U",df[1,18],sep=".")
+  for (i in 20:27) {
+    df[1,i]<-str_c("FC",df[1,i],sep=".")
+  }
+  for (i in 28:35) {
+    df[1,i]<-str_c("MC",df[1,i],sep=".")
+  }
+  df[1,36]<-str_c("C",df[1,36],sep=".")
+  for (i in 1:36) {
+    df[1,i]<-str_replace_all(df[1,i], " ","_")
+  }
+  
+  df[1,19]<-"Department"
+  df[2:39,19]<-rep(dep,38)
+  df2<-df[2:39,1:36]
+  namevector<-unname(unlist(df[1,]))
+  colnames(df2) <- namevector
+  df2<-df2[,c(1,19,2:18,20:36)]
+  for (i in 20:36) {
+    for (j in 1:nrow(df2)) {
+      df2[j,i]<-str_sub(df2[j,i], 2, -1)
+    }
+  }
+  for (i in 2:36) {
+    for (j in 1:nrow(df2)) {
+      df2[j,i]<-str_replace_all(df2[j,i], ",","")
+    }
+  }
+  df2[,1]<-sapply(df2[, 1], as.integer)
+  df2[,c(3:36)]<-sapply(df2[,c(3:36)], as.numeric)
+  df2
+}
+# Import and transform data
+read.table("AFRH.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('AFRH')->AFRH
+read.table("BBG.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('BBG')->BBG
+read.table("CAB.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('CAB')->CAB
+read.table("CFTC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('CFTC')->CFTC
+read.table("CNCS.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('CNCS')->CNCS
+
+read.table("CPSC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('CPSC')->CPSC
+read.table("CSOSA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('CSOSA')->CSOSA
+read.table("DHS.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('DHS')->DHS
+read.table("DOC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('DOC')->DOC
+read.table("DOD.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('DOD')->DOD
+
+read.table("DOE.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('DOE')->DOE
+read.table("DOI.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('DOI')->DOI
+read.table("DOJ.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('DOJ')->DOJ
+read.table("DOL.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('DOL')->DOL
+read.table("DOT.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('DOT')->DOT
+
+read.table("Education.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('Education')->Education
+read.table("EEOC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('EEOC')->EEOC
+read.table("EPA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('EPA')->EPA
+read.table("FCC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('FCC')->FCC
+read.table("FEMA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('FEMA')->FEMA
+
+read.table("FERC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('FERC')->FERC
+read.table("FHFA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('FHFA')->FHFA
+read.table("FTC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('FTC')->FTC
+read.table("GSA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('GSA')->GSA
+read.table("HHS.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('HHS')->HHS
+
+read.table("HUD.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('HUD')->HUD
+read.table("ICC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('ICC')->ICC
+read.table("NARA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('NARA')->NARA
+read.table("NASA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('NASA')->NASA
+read.table("NCPC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('NCPC')->NCPC
+
+read.table("NLRB.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('NLRB')->NLRB
+read.table("NRC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('NRC')->NRC
+read.table("NSF.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('NSF')->NSF
+read.table("OPM.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('OPM')->OPM
+read.table("OSC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('OSC')->OSC
+
+read.table("PBGC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('PBGC')->PBGC
+read.table("PCC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('PCC')->PCC
+read.table("Peace.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('Peace')->Peace
+read.table("RRB.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('RRB')->RRB
+read.table("SBA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('SBA')->SBA
+
+read.table("SEC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('SEC')->SEC
+read.table("SI.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('SI')->SI
+read.table("SSA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('SSA')->SSA
+read.table("SSS.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('SSS')->SSS
+read.table("State.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('State')->State
+
+read.table("TRSY.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('TRSY')->TRSY
+read.table("TVA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('TVA')->TVA
+read.table("TWPC.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('TWPC')->TWPC
+read.table("USACE.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('USACE')->USACE
+read.table("USAID.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('USAID')->USAID
+
+read.table("USDA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('USDA')->USDA
+read.table("USPS.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('USPS')->USPS
+read.table("VA.csv", header = TRUE, sep=",", stringsAsFactors = FALSE) %>%
+  tbl_df() %>%
+  tidydf('VA')->VA
+
+total<-rbind(AFRH,BBG,CAB,CFTC,CNCS,CPSC,CSOSA,DHS,DOC,DOD,DOE,DOI,DOJ,DOL,DOT,Education,EEOC,EPA,FCC,
+             FEMA,FERC,FHFA,FTC,GSA,HHS,HUD,ICC,NARA,NASA,NCPC,NLRB,NRC,NSF,OPM,OSC,PBGC,PCC,Peace,RRB,
+             SBA,SEC,SI,SSA,SSS,State,TRSY,TVA,TWPC,USACE,USAID,USDA,USPS,VA)
+```
+
+To test the accuracy of the total consumption reported in the data a simple test is run. The difference between the total usage calculated from the data and the reported total is calculated and the result for 5 departments is shown (See table below). Notice the difference is very small. Thus, we use the reported totals for usage and cost in our analyses.
+
+```{r,echo=FALSE}
+total %>% 
+  mutate(FU.subtotal=Reduce("+",.[3:9]))%>%
+  mutate(FU.subtotal_diff=FU.subtotal-FU.Facility_Subtotal)%>%
+  mutate(MU.subtotal=Reduce("+",.[11:17]))%>%
+  mutate(MU.subtotal_diff=MU.subtotal-MU.Mobility_Subtotal)%>%
+  mutate(FC.subtotal=Reduce("+",.[20:26]))%>%
+  mutate(FC.subtotal_diff=FC.subtotal-FC.Facility_Subtotal)%>%
+  mutate(MC.subtotal=Reduce("+",.[28:34]))%>%
+  mutate(MC.subtotal_diff=MC.subtotal-MC.Mobility_Subtotal)%>%
+  mutate(U.total=FU.subtotal+MU.subtotal)%>%
+  mutate(U.total_diff=U.total-U.Total)%>%
+  mutate(C.total=FC.subtotal+MC.subtotal)%>%
+  mutate(C.total_diff=C.total-C.Total) ->total2
+
+total2 <- total2 %>%
+  select(Department,FU.subtotal_diff,MU.subtotal_diff,U.total_diff,FC.subtotal_diff,MC.subtotal_diff,C.total_diff) %>%
+  group_by(Department) %>%
+  summarise_each(funs(mean)) %>%
+  head(5)
+
+knitr::kable(total2, caption="Table showing the difference between calculated total and total reported in data.", col.names = c("Department","Facility Usage","Mobility Usage","Total Usage","Facility Cost","Mobility Cost","Total Cost"))
+```
+
+# Macro Trend Analysis
+
+As a first step we plot the historic trend in energy usage and cost. The energy consumption is expected to overall increase over the years and the cost is expected to follow the boom and bust cycles of crude oil as most of the energy, either directly (as in the case of natural gas) or indirectly (as in the case of electricity) sources from fossil fuels.
+
+```{r,echo=FALSE,fig.width=7,fig.height=5}
+total%>%
+  select(Year,Department,FU.Facility_Subtotal,MU.Mobility_Subtotal,U.Total,
+         FC.Facility_Subtotal,MC.Mobility_Subtotal,C.Total)%>%
+  group_by(Year)%>%
+  summarise(FU.Facility_Subtotal=sum(FU.Facility_Subtotal),
+            MU.Mobility_Subtotal=sum(MU.Mobility_Subtotal),
+            U.Total=sum(U.Total),FC.Facility_Subtotal=sum(FC.Facility_Subtotal),
+            MC.Mobility_Subtotal=sum(MC.Mobility_Subtotal),C.Total=sum(C.Total)) ->total4
+
+ggplot(total4)+
+  geom_line(mapping=aes(x=Year,y=FU.Facility_Subtotal/1000,colour="Facility Usage"))+
+  geom_point(mapping=aes(x=Year,y=FU.Facility_Subtotal/1000,colour="Facility Usage"))+
+  geom_line(mapping=aes(x=Year,y=MU.Mobility_Subtotal/1000,colour="Mobility Usage"))+
+  geom_point(mapping=aes(x=Year,y=MU.Mobility_Subtotal/1000,colour="Mobility Usage"))+
+  geom_line(mapping=aes(x=Year,y=U.Total/1000,color="Total Usage"))+
+  geom_point(mapping=aes(x=Year,y=U.Total/1000,color="Total Usage"))+
+  scale_colour_manual("Legend",values=c("Facility Usage"="red", "Mobility Usage"="blue", "Total Usage"="black")) +
+  labs(title="Historical Trend in Energy Usage in Trillion Site BTU") +
+  xlab("Year") +
+  ylab("Usage (Trillion Site BTU)") 
+```
+
+Counter-intuitive to what was expected, the total facility energy usage has actually seen an overall decrease. This could be as a result of technological advancement leading to more energy effecient devices.
+
+We now look at the total cost spent for facility energy. We expect the overall cast to see an increase (due to inflation) but teh trend itself is not expected to be monotonic. Rather the trend is expected to follow the boom and bust cycles of crude oil very closely as most of the energy is either directly or indirectly sourced from crude oil.
+
+```{r,echo=FALSE,fig.width=7,fig.height=5}
+ggplot(total4)+
+  geom_line(mapping=aes(x=Year,y=FC.Facility_Subtotal,colour="Facility Cost"))+
+  geom_point(mapping=aes(x=Year,y=FC.Facility_Subtotal,colour="Facility Cost"))+
+  geom_line(mapping=aes(x=Year,y=MC.Mobility_Subtotal,colour="Mobility Cost"))+
+  geom_point(mapping=aes(x=Year,y=MC.Mobility_Subtotal,colour="Mobility Cost"))+
+  geom_line(mapping=aes(x=Year,y=C.Total,color="Total Cost"))+
+  geom_point(mapping=aes(x=Year,y=C.Total,color="Total Cost"))+
+  scale_colour_manual("Legend",values=c("Facility Cost"="red", "Mobility Cost"="blue", "Total Cost"="black")) +
+  labs(title="Historic Trend in Energy Costs in Millions of Dollars") +
+  xlab("Year") +
+  ylab("Enegy Cost ($MM)")
+cat('\r\n\r\n')
+
+oil <- read.table("crude_oil_WTI.csv", header = TRUE, sep=",", col.names = c("date", "price"), stringsAsFactors = FALSE)
+
+ggplot(oil) +
+  geom_line(mapping=aes(x=date, y=price),color="black")+
+  geom_point(mapping=aes(x=date, y=price),color="black")+
+  xlab("Year") +
+  ylab("Cost of WTI Crude (US/Barrel")+
+  ggtitle("Cost per Barrel in Current USD of WTI Crude Oil")
+```
+
+From the figures shown above we can see that the total cost follows the expected trend and does not deviate from the hypothesis.
+
+# Energy Source Analysis
+
+We now study the structure of energy sources over the years, i.e. the contribution of different sources of energy over the years. The decision about choosing the source of energy depends upon, essentially, the cost per unit energy. Obviously, there will be a shift towards cheaper sources of energy. The objective here is to find out how the cheapest source of energy has changed over the years. The cost itself depends on a vareity of factors, like availability of said source, technological advancement in conversion of the source of energy into usable form, etc. While this study does not go into the details of that decision making, we are interested in the effect of cost per unit energy on the decision.
+
+```{r,echo = FALSE,fig.height=5,fig.width=7}
+total %>%
+  select(c(1:2,11:17))%>%
+  gather(3:9, key = "Mobility_Energy", value = "Mobility_Usage")%>%
+  group_by(Year,Mobility_Energy)%>%
+  summarise(MU=sum(Mobility_Usage))->MU_All
+ggplot() +
+  geom_bar(data=MU_All, aes(x=Year, y=MU,fill = Mobility_Energy),
+           stat = "identity",position = "fill") +
+  xlab("Year") +
+  ylab("Mobility Energy Usage as % of Total") +
+  ggtitle("Historical Trend of Different Mobility Energy Sources")
+cat('\r\n\r\n')
+
+total %>%
+  select(1:9)%>%
+  gather(3:9, key = "Facility_Energy", value = "Facility_Usage")%>%
+  group_by(Year,Facility_Energy)%>%
+  summarise(FU=sum(Facility_Usage))->FU_All
+ggplot() +
+  geom_bar(data=FU_All, aes(x=Year, y=FU,fill = Facility_Energy),
+           stat = "identity",position = "fill") +
+  xlab("Year") +
+  ylab("Facility Energy Usage as % of Total") +
+  ggtitle("Historical Trend of Different Facility Energy Sources")
+```
+
+The historical trend in mobility energy usage does not reveal any interesting feature of the data taken by itself. This might prove to be more interesting when considred along with the contribution from each individual department, which will be discussed in the next section.
+
+The historical trend of facility energy, however, shows that contribution from coal and fuel oil has reduced over the years while contribution from electricity and natural gas has shown a steady increase. As discussed above, we do not go into the details of the reasons behind this move but just consider the cost per unit energy. Specifically, we consider electricity and fuel oil.
+
+```{r, echo=FALSE,fig.width=7,fig.height=5}
+total %>%
+  select(Year,Department,FU.Electricity,FC.Electricity)%>%
+  group_by(Year)%>%
+  summarise(consumption=sum(FU.Electricity),cost=sum(FC.Electricity),price=cost*1000/consumption)->Electricity
+ggplot(Electricity)+
+  geom_smooth(mapping=aes(x=Year,y=consumption/10000,color="Consumption (10T BTU)"))+
+  geom_point(mapping=aes(x=Year,y=consumption/10000,color="Consumption (10T BTU)"))+
+  geom_smooth(mapping=aes(x=Year,y=cost/1000,color="Energy Cost ($Bn)"))+
+  geom_point(mapping=aes(x=Year,y=cost/1000,color="Energy Cost ($Bn)"))+
+  geom_smooth(mapping=aes(x=Year,y=price,color="Price ($/BTU)"))+
+  geom_point(mapping=aes(x=Year,y=price,color="Price ($/BTU)"))+
+  scale_colour_manual("Legend",values=c("Consumption (10T BTU)"="red", "Energy Cost ($Bn)"="blue", "Price ($/BTU)"="black")) +
+  xlab("Year") +
+  ggtitle("Studying the Trend of Electricity in Facility Energy") 
+```
+
+We first consider ekectricity. The total cost follows an oscillation with a very small amplitude. The consumption however saw a steady rise in the 80's and has since plateaued. The oscillation in the total cost becomes more pronounced in the cost per unit energy. Clearly, despite the increase in cost per unit energy of electricity since 2001 the consuption hasremained constant. This possibly suggests a serious dependence on electricity as a source of energy.
+
+```{r,echo=FALSE,fig.width=7,fig.height=5}
+total %>%
+  select(Year,Department,FU.Fuel_Oil,FC.Fuel_Oil)%>%
+  group_by(Year)%>%
+  summarise(consumption=sum(FU.Fuel_Oil),cost=sum(FC.Fuel_Oil),price=cost*1000/consumption)->Fuel_Oil
+ggplot(Fuel_Oil)+
+  geom_smooth(mapping=aes(x=Year,y=consumption/10000,color="Consumption (10T BTU)"))+
+  geom_point(mapping=aes(x=Year,y=consumption/10000,color="Consumption (10T BTU)"))+
+  geom_smooth(mapping=aes(x=Year,y=cost/1000,color="Energy Cost ($Bn)"))+
+  geom_point(mapping=aes(x=Year,y=cost/1000,color="Energy Cost ($Bn)"))+
+  geom_smooth(mapping=aes(x=Year,y=price,color="Price ($/BTU)"))+
+  geom_point(mapping=aes(x=Year,y=price,color="Price ($/BTU)"))+
+  scale_colour_manual("Legend",values=c("Consumption (10T BTU)"="red", "Energy Cost ($Bn)"="blue", "Price ($/BTU)"="black")) +
+  xlab("Year") +
+  ggtitle("Studying the Trend of Fuel Oil in Facility Energy") 
+```
+
+The trend of fuel oil in facility energy paints a completely different picture. The total cost spent on fuel oil has remained more or less constant since the 90's while the consumption has fallen sharply. The cost per unit energy however has shown a steady rise since the late 90's. This clearly implies that a major contributing factor in the decision to reduce the use of fuel oil has been the steady increase cost per unit energy as compared with other sources of energy which offer much more competetive trends.
+
+# Departmental Trend Analysis
+
+We finally attempt to answer our third question. Plotting the fractions of energy consumption of all the 53 departments in a pie chart is impractical for two reasons. One, there are too many departments for there to be a clean looking chart. Secondly, from our preliminary analyses we found many departments to have little or no information. In an attempt to overcome this shortfall, we plot the top 5 contributors for each energy source and combine the rest of the departments as 'Others'.
+
+We consider 4 representative years for the 4 decades - 1982, 1992, 2002 and 2012 - and calculate the (facility and mobility) combined fractional energy usage for different dpartments.
+
+```{r,echo=FALSE}
+total %>%
+  select(Year,Department,U.Total,C.Total)%>%
+  group_by(Year) %>%
+  mutate(U_ratio=U.Total/sum(U.Total)) %>%
+  mutate(C_ratio=C.Total/sum(C.Total)) %>%
+  ungroup() %>%
+  filter(Year==1982|Year==1992|Year==2002|Year==2012)->total3
+
+U_piechart<-function(df,year){
+  df %>%
+    subset(Year==year)%>%
+    arrange(desc(U_ratio))->df2
+  df2[6:nrow(df2),]%>%
+    summarise(Year=mean(Year),Department="Others",U.Total= sum(U.Total),
+              C.Total= sum(C.Total),U_ratio= sum(U_ratio),C_ratio= sum(C_ratio))->df3
+  rbind(df2[1:5,],df3)%>%
+    mutate(number=c(1,2,3,4,5,6))->df4
+  df4$Department <-as.factor(df4$Department)
+  df4<-as.data.frame(df4)
+  df4$Department <-factor(df4$Department, levels=df4[order(df4$number), "Department"])
+  bp<- ggplot(df4, aes(x="", y=U_ratio, fill=Department, "Facility Usage Consumption"))+
+    geom_bar(width = 1, stat = "identity")
+  pie <- bp + coord_polar("y", start=0) + ggtitle(paste0("Usage in ", year))
+  pie
+}
+C_piechart<-function(df,year){
+  df %>%
+    subset(Year==year)%>%
+    arrange(desc(C_ratio))->df2
+  df2[6:nrow(df2),]%>%
+    summarise(Year=mean(Year),Department="Others",U.Total= sum(U.Total),
+              C.Total= sum(C.Total),U_ratio= sum(U_ratio),C_ratio= sum(C_ratio))->df3
+  rbind(df2[1:5,],df3)%>%
+    mutate(number=c(1,2,3,4,5,6))->df4
+  df4$Department <-as.factor(df4$Department)
+  df4<-as.data.frame(df4)
+  df4$Department <-factor(df4$Department, levels=df4[order(df4$number), "Department"])
+  bp<- ggplot(df4, aes(x="", y=C_ratio, fill=Department))+
+    geom_bar(width = 1, stat = "identity")
+  pie <- bp + coord_polar("y", start=0) + ggtitle(paste0("Cost in ", year))
+  pie
+}
+```
+
+
+```{r,echo=FALSE,fig.width=5, fig.height=5}
+U_piechart(total3,1982)
+cat('\r\n\r\n')
+U_piechart(total3,1992)
+cat('\r\n\r\n')
+U_piechart(total3,2002)
+cat('\r\n\r\n')
+U_piechart(total3,2012)
+cat('\r\n\r\n')
+```
+
+The Department of Defense (DOD) has overwhelmingly been the major contributor to energy consumption across all the years. The United States Postal Services (USPS) and Department of Energy (DOE) are the next biggest contributors with fractions much lower than the DOD. Only the energy consumption of the DOD will be considered further in this study. As an interesting side note, notice that the Department of Homeland Security (DHS) is the 5th contributor in 2012 but does not feature in the earlier charts. This is a consequence of incomplete information in the original data. The DHS table has data entries only from the year 2003.
+
+## Department of Defense
+
+We first consider the energy usage and cost of the Department of Defense. Being a major contributor to energy usage, any perturbation in the usage (and cost) of the DOD will reflect sharply on the total energy usage (and cost). We first try to study the composition of energy usage for both facility and mobility over the years.
+
+```{r,echo=FALSE}
+total %>%
+  filter(Department=="DOD")%>%
+  filter(Year==1982|Year==1992|Year==2002|Year==2012)%>%
+  select(1:9)%>%
+  gather(3:9, key = "Facility_Energy", value = "Facility_Usage")->DOD_FU
+
+total %>%
+  filter(Department=="DOD")%>%
+  filter(Year==1982|Year==1992|Year==2002|Year==2012)%>%
+  select(c(1:2,11:17))%>%
+  gather(3:9, key = "Mobility_Energy", value = "Mobility_Usage")->DOD_MU
+
+total %>%
+  filter(Department=="DOD")%>%
+  filter(Year==1982|Year==1992|Year==2002|Year==2012)%>%
+  select(c(1:2,20:26))%>%
+  gather(3:9, key = "Facility_Energy", value = "Facility_Cost")->DOD_FC
+
+total %>%
+  filter(Department=="DOD")%>%
+  filter(Year==1982|Year==1992|Year==2002|Year==2012)%>%
+  select(c(1:2,28:34))%>%
+  gather(3:9, key = "Mobility_Energy", value = "Mobility_Cost")->DOD_MC
+
+FU_piechart<-function(df,year){
+  df %>%
+  subset(Year==year) %>%
+  mutate(Facility_Usage_ratio=Facility_Usage/sum(Facility_Usage))->df2
+  df2$Facility_Energy<-as.factor(df2$Facility_Energy)
+  df2<-as.data.frame(df2)
+  df2$Facility_Energy<-factor(df2$Facility_Energy, levels=df2[order(df2$Facility_Usage,decreasing = TRUE), "Facility_Energy"])
+  bp<- ggplot(df2, aes(x="", y=Facility_Usage_ratio, fill=Facility_Energy))+
+    geom_bar(width = 1, stat = "identity")
+  pie <- bp + coord_polar("y", start=0) + ggtitle(paste0("Facility Usage in ",year))
+  pie
+}
+MU_piechart<-function(df,year){
+  df %>%
+    subset(Year==year) %>%
+    mutate(Mobility_Usage_ratio=Mobility_Usage/sum(Mobility_Usage))->df2
+  df2$Mobility_Energy<-as.factor(df2$Mobility_Energy)
+  df2<-as.data.frame(df2)
+  df2$Mobility_Energy<-factor(df2$Mobility_Energy, levels=df2[order(df2$Mobility_Usage,decreasing = TRUE), "Mobility_Energy"])
+  bp<- ggplot(df2, aes(x="", y=Mobility_Usage_ratio, fill=Mobility_Energy))+
+    geom_bar(width = 1, stat = "identity")
+  pie <- bp + coord_polar("y", start=0) + ggtitle(paste0("Mobility Usage in ",year))
+  pie
+}
+FC_piechart<-function(df,year){
+  df %>%
+    subset(Year==year) %>%
+    mutate(Facility_Cost_ratio=Facility_Cost/sum(Facility_Cost))->df2
+  df2$Facility_Energy<-as.factor(df2$Facility_Energy)
+  df2<-as.data.frame(df2)
+  df2$Facility_Energy<-factor(df2$Facility_Energy, levels=df2[order(df2$Facility_Cost,decreasing = TRUE), "Facility_Energy"])
+  bp<- ggplot(df2, aes(x="", y=Facility_Cost_ratio, fill=Facility_Energy))+
+    geom_bar(width = 1, stat = "identity")
+  pie <- bp + coord_polar("y", start=0) + ggtitle(paste0("Facility Cost in ",year))
+  pie
+}
+MC_piechart<-function(df,year){
+  df %>%
+    subset(Year==year) %>%
+    mutate(Mobility_Cost_ratio=Mobility_Cost/sum(Mobility_Cost))->df2
+  df2$Mobility_Energy<-as.factor(df2$Mobility_Energy)
+  df2<-as.data.frame(df2)
+  df2$Mobility_Energy<-factor(df2$Mobility_Energy, levels=df2[order(df2$Mobility_Cost,decreasing = TRUE), "Mobility_Energy"])
+  bp<- ggplot(df2, aes(x="", y=Mobility_Cost_ratio, fill=Mobility_Energy))+
+    geom_bar(width = 1, stat = "identity")
+  pie <- bp + coord_polar("y", start=0) + ggtitle(paste0("Mobility Cost in ",year))
+  pie
+}
+```
+
+```{r,echo=FALSE,fig.height=5,fig.width=5}
+MU_piechart(DOD_MU,1982)
+cat('\r\n\r\n')
+MU_piechart(DOD_MU,1992)
+cat('\r\n\r\n')
+MU_piechart(DOD_MU,2002)
+cat('\r\n\r\n')
+MU_piechart(DOD_MU,2012)
+cat('\r\n\r\n')
+```
+
+Fisrt we consider mobility usage across the years. The dominant contributions are from jet fuel and diesel, with diesel contributing less than 50% of jet fuel. This, along with the fact that DOD is the single biggest contributor of energy, explains the trend observed in the source analysis of mobility energy over the years where jet fuel dominates the entire plot.
+
+An interesting exercise would be to plot jet fuel consumption against year and observe for historical events. For instance, whatever the correlation of jet fuel consumption with year the years in which the United States participated in a war would be outliers.
+
+```{r,echo=FALSE,fig.height=5,fig.width=7}
+total %>%
+  filter(Department=="DOD")%>%
+  select(Year,Department,MU.Jet_Fuel,MC.Jet_Fuel)%>%
+  group_by(Year)%>%
+  summarise(consumption=sum(MU.Jet_Fuel),cost=sum(MC.Jet_Fuel),price=cost*1000/consumption)->Jet_Fuel
+
+ggplot(Jet_Fuel)+
+  geom_smooth(mapping=aes(x=Year,y=consumption/10000,color="Consumption (10T BTU)"))+
+  geom_point(mapping=aes(x=Year,y=consumption/10000,color="Consumption (10T BTU)"))+
+  geom_smooth(mapping=aes(x=Year,y=cost/1000,color="Energy Cost ($Bn)"))+
+  geom_point(mapping=aes(x=Year,y=cost/1000,color="Energy Cost ($Bn)"))+
+  geom_smooth(mapping=aes(x=Year,y=price,color="Price ($/BTU)"))+
+  geom_point(mapping=aes(x=Year,y=price,color="Price ($/BTU)"))+
+  scale_colour_manual("Legend",values=c("Consumption (10T BTU)"="red", "Energy Cost ($Bn)"="blue", "Price ($/BTU)"="black")) +
+  xlab("Year") +
+  ylab("") +
+  ggtitle("Historical Trend of Jet Fuel Consumption")
+```
+
+In keeping with our hypothesis there are a few outliers which are explained by historic events. The first outlier in the year 1975 corresponds to the FDirst Phase of the Civil War at Lebanon. The outliers in the early 90's are due to the Gulf War and the ones in early 2000's is an effect of the War on Terror. Similarly, the cost per unit has outliers in the early 80's. This could be explained by the fact that at that time the United States had double digit inflation.
+
+We now look at the contribution to facility energy usage over the years.
+
+```{r,echo=FALSE,fig.width=5,fig.height=5}
+FU_piechart(DOD_FU,1982)
+cat('\r\n\r\n')
+FU_piechart(DOD_FU,1992)
+cat('\r\n\r\n')
+FU_piechart(DOD_FU,2002)
+cat('\r\n\r\n')
+FU_piechart(DOD_FU,2012)
+cat('\r\n\r\n')
+```
+
+In keeping with the overall trend for all the departments, the contribution from fuel oil is decreasing and that from electricity and natural gas are increasing. The graph below gives the historical trend.
+
+```{r,echo=FALSE,fig.width=7,fig.height=5}
+total %>%
+  filter(Department=="DOD")%>%
+  select(1:9)%>%
+  gather(3:9, key = "Facility_Energy", value = "Facility_Usage")->DOD_FU_All
+ggplot() +
+  geom_bar(data=DOD_FU_All, aes(x=Year, y=Facility_Usage/1000,fill = Facility_Energy),alpha = 3/4, stat = "identity")+
+  geom_smooth(data=total4,mapping=aes(x=Year,y=FU.Facility_Subtotal/1000),color="gray")+
+  geom_point(data=total4,mapping=aes(x=Year,y=FU.Facility_Subtotal/1000),color="black") +
+  xlab("Year") +
+  ylab("Total Facility Energy") +
+  ggtitle("Historical Trend of Facility Energy Usage by the DOD")
+```
+
+As we can see the total energy consumption decreases historically, as is the contribution from fuel oil. The contribution from natural gas although from the pir charts seemed to show a steady increase, is actually more or less constant in its contribution. The contribution from electricity however is on a steady increase. Thus, the trends observed in the DOD are not one-to-one correlatedto the global trends observed but certainly share a similarity.
+
+## Conclusions
+
+This study analyzed the United States federal energy consumption data from 1975 to 2012. The overall theme of the study was to analyze macro trends observed in total energy consumption and cost, consumption and cost data of the different sources for both facility and mobility and a department specific study (DOD) and draw conclusions about the energy consumption and cost.
+
+* __Macro Trends Analysis__:
+    + _Energy Usage_: The total energy usage has showed an overall decrease over the years for both the total governmental consumption and specifically for the DOD.
+    + _Cost of Energy_: The cost of energy correleates with the boom and bust cycles of crude oil as most of the energy is sourced from crude oil.
+* __Energy Source Analysis__:
+    + _Facility Usage_: The dependence on fuel oil shows a steady decline and the dependence on electricity shows a steady increase for both total governmental consumption and for DOD. But while the dependence on natural gas has seen a steady increase overall, it has remained more or less constant for DOD. Fuel oil cost also shows a steep increase which was perhaps the strongest contributing factor in the move away from fuel oil.
+    + _Mobility Usage_: Both overall consumption and for DOD jet fuel is the most dominating presence. Using the historical trend for consumption of jet fuel we were also able to explain the outliers as historical events.
+* __Departmental Trend Analysis__:
+    + _Problems with the data_: The biggest problem with this data set has been its incompleteness. Several departments give little or no information at all.
+    + _Distribution across departments_: With the data available, the biggest contributor has been the DOD with the DOE, USPS and VA following with a large differential. DHS is the 5th biggest contributor in 2012 but has complete data only from 2003 onwards.
